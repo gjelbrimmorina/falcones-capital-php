@@ -43,10 +43,10 @@ The platform supports two user types:
 
 ## Video Tutorial
 
-> A walkthrough video demonstrating all the website features will be added here soon.
+> A walkthrough video demonstrating all the website features.
 
 ```
-[ Video Coming Soon ]
+[Watch the demo](docs/demo.mp4)
 ```
 
 ---
