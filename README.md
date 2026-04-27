@@ -43,11 +43,14 @@ The platform supports two user types:
 
 ## Video Tutorial
 
-> A walkthrough video demonstrating all the website features.
+A complete walkthrough demonstrating all the website features including login, role-based dashboards, server-side validation, sorting, and the contact form.
 
 <video src="docs/demo.mp4" controls width="800">
   Your browser does not support the video tag.
+  <a href="docs/demo.mp4">Download the video instead</a>.
 </video>
+
+> If the video does not play, [click here to download it](docs/demo.mp4).
 
 ---
 
