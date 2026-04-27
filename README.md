@@ -45,9 +45,9 @@ The platform supports two user types:
 
 > A walkthrough video demonstrating all the website features.
 
-```
-[Watch the demo](docs/demo.mp4)
-```
+<video src="docs/demo.mp4" controls width="800">
+  Your browser does not support the video tag.
+</video>
 
 ---
 
