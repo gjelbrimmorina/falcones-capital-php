@@ -12,7 +12,17 @@ $GLOBALS['CURRENT_YEAR']     = date('Y');
 
 // Base URL helper — adjust if installed in a subfolder
 // Example: if project is at http://localhost/falcones-capital-php, BASE_URL = '/falcones-capital-php'
+// Base URL helper — adjust if installed in a subfolder
 $GLOBALS['BASE_URL'] = '/falcones-capital-php';
+
+// Phase 2: MySQL configuration
+$GLOBALS['DB_HOST'] = 'localhost';
+$GLOBALS['DB_NAME'] = 'falcones_capital';
+$GLOBALS['DB_USER'] = 'root';
+$GLOBALS['DB_PASS'] = '';
+
+// Phase 2: email configuration. On local XAMPP, emails are also saved to storage/mail_log.txt.
+$GLOBALS['MAIL_TO'] = 'support@falcones-capital.com';
 
 // Helper function to build URLs
 function url($path = '') {
