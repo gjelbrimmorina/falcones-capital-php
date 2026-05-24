@@ -1,11 +1,10 @@
 <?php
-// Authentication logic — hardcoded users (NO database, as per Phase 1)
 require_once __DIR__ . '/../classes/User.php';
 require_once __DIR__ . '/../classes/Admin.php';
 require_once __DIR__ . '/../classes/Trader.php';
+require_once __DIR__ . '/db.php';
 
-// Hardcoded users — associative array (demonstration of arrays)
-// In Phase 2, this will be replaced with a MySQL database
+// Phase 1 fallback users if MySQL is not imported yet.
 $HARDCODED_USERS = [
     'admin@falcones.com' => [
         'password' => 'admin123',
@@ -23,109 +22,105 @@ $HARDCODED_USERS = [
     ]
 ];
 
-/**
- * Attempt to login with email + password.
- * Returns true on success, false on failure.
- */
 function attemptLogin($email, $password, $remember = false) {
     global $HARDCODED_USERS;
-
     $email = strtolower(trim($email));
+    $pdo = getPDO();
 
-    if (!isset($HARDCODED_USERS[$email])) {
-        return false;
+    if ($pdo) {
+        try {
+            $stmt = $pdo->prepare('SELECT id, name, email, password_hash, role FROM users WHERE email = ? AND is_active = 1 LIMIT 1');
+            $stmt->execute([$email]);
+            $user = $stmt->fetch();
+
+            if (!$user || !password_verify($password, $user['password_hash'])) {
+                return false;
+            }
+
+            session_regenerate_id(true);
+            $_SESSION['user_id']    = (int)$user['id'];
+            $_SESSION['user_email'] = $user['email'];
+            $_SESSION['user_name']  = $user['name'];
+            $_SESSION['user_role']  = $user['role'];
+            $_SESSION['logged_in']  = true;
+            $_SESSION['login_time'] = date('Y-m-d H:i:s');
+
+            if ($remember) {
+                setcookie('remember_email', $email, time() + (30 * 24 * 60 * 60), '/');
+            }
+            return true;
+        } catch (Throwable $e) {
+            error_log('DB login failed: ' . $e->getMessage());
+        }
     }
 
+    if (!isset($HARDCODED_USERS[$email])) return false;
     $user = $HARDCODED_USERS[$email];
-    if ($user['password'] !== $password) {
-        return false;
-    }
+    if ($user['password'] !== $password) return false;
 
-    // Store in session
+    session_regenerate_id(true);
+    $_SESSION['user_id']    = null;
     $_SESSION['user_email'] = $email;
     $_SESSION['user_name']  = $user['name'];
     $_SESSION['user_role']  = $user['role'];
     $_SESSION['logged_in']  = true;
     $_SESSION['login_time'] = date('Y-m-d H:i:s');
 
-    // Remember-me cookie (lives 30 days)
     if ($remember) {
         setcookie('remember_email', $email, time() + (30 * 24 * 60 * 60), '/');
     }
-
     return true;
 }
 
-/**
- * Logout — clears session and remember-me cookie.
- */
 function logoutUser() {
     $_SESSION = [];
+    if (ini_get('session.use_cookies')) {
+        $params = session_get_cookie_params();
+        setcookie(session_name(), '', time() - 42000, $params['path'], $params['domain'], $params['secure'], $params['httponly']);
+    }
     session_destroy();
     if (isset($_COOKIE['remember_email'])) {
         setcookie('remember_email', '', time() - 3600, '/');
     }
 }
 
-/**
- * Check if user is logged in.
- */
 function isLoggedIn() {
     return isset($_SESSION['logged_in']) && $_SESSION['logged_in'] === true;
 }
 
-/**
- * Get current user role.
- */
-function getUserRole() {
-    return $_SESSION['user_role'] ?? null;
-}
+function getUserRole() { return $_SESSION['user_role'] ?? null; }
+function getUserName() { return $_SESSION['user_name'] ?? null; }
+function getUserEmail() { return $_SESSION['user_email'] ?? null; }
+function getUserId() { return $_SESSION['user_id'] ?? null; }
 
-/**
- * Get current user name.
- */
-function getUserName() {
-    return $_SESSION['user_name'] ?? null;
-}
-
-/**
- * Get current user email.
- */
-function getUserEmail() {
-    return $_SESSION['user_email'] ?? null;
-}
-
-/**
- * Build a full User object (Admin or Trader) from the current session.
- * Returns null if not logged in.
- */
 function getCurrentUser() {
-    global $HARDCODED_USERS;
-
     if (!isLoggedIn()) return null;
 
+    $pdo = getPDO();
+    if ($pdo && getUserId()) {
+        try {
+            $stmt = $pdo->prepare('SELECT u.*, tp.account_size, tp.profit_split, tp.total_payout, tp.status FROM users u LEFT JOIN trader_profiles tp ON tp.user_id = u.id WHERE u.id = ? LIMIT 1');
+            $stmt->execute([getUserId()]);
+            $data = $stmt->fetch();
+            if ($data) {
+                if ($data['role'] === 'admin') {
+                    return new Admin($data['email'], $data['name']);
+                }
+                return new Trader($data['email'], $data['name'], (float)($data['account_size'] ?? 0), (int)($data['profit_split'] ?? 0), (float)($data['total_payout'] ?? 0), $data['status'] ?? 'evaluation');
+            }
+        } catch (Throwable $e) {
+            error_log('getCurrentUser failed: ' . $e->getMessage());
+        }
+    }
+
+    global $HARDCODED_USERS;
     $email = $_SESSION['user_email'];
     if (!isset($HARDCODED_USERS[$email])) return null;
-
     $data = $HARDCODED_USERS[$email];
-
-    if ($data['role'] === 'admin') {
-        return new Admin($email, $data['name']);
-    } else {
-        return new Trader(
-            $email,
-            $data['name'],
-            $data['accountSize'] ?? 50000,
-            $data['profitSplit'] ?? 70,
-            $data['totalPayout'] ?? 0,
-            $data['status']      ?? 'funded'
-        );
-    }
+    if ($data['role'] === 'admin') return new Admin($email, $data['name']);
+    return new Trader($email, $data['name'], $data['accountSize'] ?? 50000, $data['profitSplit'] ?? 70, $data['totalPayout'] ?? 0, $data['status'] ?? 'funded');
 }
 
-/**
- * Require user to be logged in — redirect to login if not.
- */
 function requireLogin() {
     if (!isLoggedIn()) {
         header('Location: ' . url('login.php'));
@@ -133,9 +128,6 @@ function requireLogin() {
     }
 }
 
-/**
- * Require specific role — redirect if not matching.
- */
 function requireRole($role) {
     requireLogin();
     if (getUserRole() !== $role) {

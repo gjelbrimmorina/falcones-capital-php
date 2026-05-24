@@ -17,8 +17,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $password = trim($_POST['password'] ?? '');
     $remember = isset($_POST['remember']);
 
-    // Server-side validation with RegEx (email format)
-    if (!validateEmail($email)) {
+    if (!verifyCsrfToken($_POST['csrf_token'] ?? '')) {
+        $error = 'Security token expired. Please refresh and try again.';
+    } elseif (!validateEmail($email)) {
         $error = 'Please enter a valid email address.';
     } elseif (strlen($password) < 3) {
         $error = 'Password is required.';
@@ -70,6 +71,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <?php endif; ?>
 
                 <form method="POST" action="" class="login-form">
+                    <?php echo csrfInput(); ?>
                     <div class="input-group">
                         <label for="email">Email Address</label>
                         <input type="text" id="email" name="email" value="<?php echo e($rememberedEmail); ?>" placeholder="admin@falcones.com" required autofocus>
