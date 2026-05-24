@@ -1,6 +1,8 @@
 <?php
+// Dummy data for challenges — replaces the React allChallenges array
 require_once __DIR__ . '/../classes/Challenge.php';
 
+// This is a NUMERIC ARRAY of Challenge objects
 $allChallenges = [
     new Challenge('$5,000',   'Starter',  '$49',  '8%', '5%', '10%', '60-80%'),
     new Challenge('$10,000',  'Basic',    '$99',  '8%', '5%', '10%', '60-80%'),

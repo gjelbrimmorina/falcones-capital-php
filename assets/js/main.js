@@ -58,3 +58,30 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
 });
+
+// Phase 2: AJAX delete for challenges (CRUD operation without page refresh)
+document.addEventListener('click', function (event) {
+    const button = event.target.closest('.ajax-delete-challenge');
+    if (!button) return;
+
+    if (!confirm('Delete this challenge without refreshing the page?')) return;
+
+    const formData = new FormData();
+    formData.append('id', button.dataset.id);
+    formData.append('csrf_token', button.dataset.token);
+
+    fetch('../actions/delete_challenge.php', {
+        method: 'POST',
+        body: formData
+    })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const row = document.getElementById('challenge-row-' + button.dataset.id);
+                if (row) row.remove();
+            } else {
+                alert(data.message || 'Delete failed.');
+            }
+        })
+        .catch(() => alert('AJAX request failed.'));
+});
