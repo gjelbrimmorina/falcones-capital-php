@@ -1,0 +1,2 @@
+Mail log initialized.
+Local contact email log used for XAMPP/demo environments where PHP mail() may not be configured.
